@@ -1,5 +1,7 @@
 name: dl-unity
 on: push
+permissions:
+  contents: write
 jobs:
   dl:
     runs-on: ubuntu-latest
