@@ -1,0 +1,16 @@
+name: dl-unity
+on: push
+jobs:
+  dl:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download and split
+        run: |
+          wget -q "https://download.unity3d.com/download_unity/887be4894c44/Windows64EditorInstaller/UnitySetup64-2022.3.22f1.exe" -O UnitySetup64-2022.3.22f1.exe
+          ls -la UnitySetup64-2022.3.22f1.exe
+          split -b 1900M -d UnitySetup64-2022.3.22f1.exe part_
+      - name: Create Release and Upload
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create v1 part_00 part_01 --title "unity 2022.3.22f1 intl" --notes "split parts"
