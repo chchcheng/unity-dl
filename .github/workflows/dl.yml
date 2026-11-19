@@ -11,17 +11,20 @@ jobs:
         run: |
           UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
           curl -sSL -A "$UA" https://public-cdn.cloud.unity3d.com/hub/prod/releases-win32.json -o r.json || true
-          head -c 600 r.json || true
-          URLS=$(jq -r '.. | objects | .downloadUrl? // empty' r.json 2>/dev/null | head -3)
-          URLS="$URLS https://public-cdn.cloud.unity3d.com/hub/prod/UnityHubSetup.exe"
+          echo "--- json head ---"; head -c 400 r.json || true; echo
+          URLS="https://public-cdn.cloud.unity3d.com/hub/prod/UnityHubSetup.exe"
+          URLS="$URLS $(jq -r '.. | objects | .downloadUrl? // empty' r.json 2>/dev/null | grep -i hub | head -3)"
           for u in $URLS; do
             echo "TRY $u"
             curl -sSL -A "$UA" "$u" -o hub.exe || continue
             SZ=$(stat -c%s hub.exe)
-            echo "SIZE $SZ"
-            if [ "$SZ" -gt 50000000 ]; then cp hub.exe UnityHubSetup_intl.exe; break; fi
+            MAGIC=$(head -c 2 hub.exe)
+            echo "SIZE $SZ MAGIC $MAGIC"
+            if [ "$SZ" -gt 100000000 ] && [ "$SZ" -lt 400000000 ] && [ "$MAGIC" = "MZ" ]; then
+              cp hub.exe UnityHubSetup_intl.exe; echo "OK picked $u"; break
+            fi
           done
-          ls -la
+          ls -la UnityHubSetup_intl.exe
       - name: Upload Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
