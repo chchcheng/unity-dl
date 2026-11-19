@@ -1,4 +1,4 @@
-name: dl-unity
+name: dl-hub
 on: push
 permissions:
   contents: write
@@ -7,13 +7,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download and split
+      - name: Download intl Hub
         run: |
-          wget -q "https://download.unity3d.com/download_unity/887be4894c44/Windows64EditorInstaller/UnitySetup64-2022.3.22f1.exe" -O UnitySetup64-2022.3.22f1.exe
-          ls -la UnitySetup64-2022.3.22f1.exe
-          split -b 1900M -d UnitySetup64-2022.3.22f1.exe part_
-      - name: Create Release and Upload
+          wget -q "https://public-cdn.cloud.unity3d.com/hub/prod/UnityHubSetup.exe" -O UnityHubSetup_intl.exe
+          ls -la UnityHubSetup_intl.exe
+      - name: Upload Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create v1 part_00 part_01 --repo ${{ github.repository }} --title "unity 2022.3.22f1 intl" --notes "split parts"
+          gh release create v2 UnityHubSetup_intl.exe --repo ${{ github.repository }} --title "intl hub" --notes "intl hub installer"
