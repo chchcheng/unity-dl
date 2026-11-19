@@ -9,10 +9,22 @@ jobs:
       - uses: actions/checkout@v4
       - name: Download intl Hub
         run: |
-          wget -q "https://public-cdn.cloud.unity3d.com/hub/prod/UnityHubSetup.exe" -O UnityHubSetup_intl.exe
-          ls -la UnityHubSetup_intl.exe
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+          curl -sSL -A "$UA" https://public-cdn.cloud.unity3d.com/hub/prod/releases-win32.json -o r.json || true
+          head -c 600 r.json || true
+          URLS=$(jq -r '.. | objects | .downloadUrl? // empty' r.json 2>/dev/null | head -3)
+          URLS="$URLS https://public-cdn.cloud.unity3d.com/hub/prod/UnityHubSetup.exe"
+          for u in $URLS; do
+            echo "TRY $u"
+            curl -sSL -A "$UA" "$u" -o hub.exe || continue
+            SZ=$(stat -c%s hub.exe)
+            echo "SIZE $SZ"
+            if [ "$SZ" -gt 50000000 ]; then cp hub.exe UnityHubSetup_intl.exe; break; fi
+          done
+          ls -la
       - name: Upload Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create v2 UnityHubSetup_intl.exe --repo ${{ github.repository }} --title "intl hub" --notes "intl hub installer"
+          gh release delete v2 --repo ${{ github.repository }} --yes || true
+          gh release create v2 UnityHubSetup_intl.exe --repo ${{ github.repository }} --title "intl hub" --notes "intl hub"
