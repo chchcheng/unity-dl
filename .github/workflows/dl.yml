@@ -10,21 +10,24 @@ jobs:
       - name: Download intl Hub
         run: |
           UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
-          curl -sSL -A "$UA" https://public-cdn.cloud.unity3d.com/hub/prod/releases-win32.json -o r.json || true
-          echo "--- json head ---"; head -c 400 r.json || true; echo
-          URLS="https://public-cdn.cloud.unity3d.com/hub/prod/UnityHubSetup.exe"
-          URLS="$URLS $(jq -r '.. | objects | .downloadUrl? // empty' r.json 2>/dev/null | grep -i hub | head -3)"
-          for u in $URLS; do
-            echo "TRY $u"
-            curl -sSL -A "$UA" "$u" -o hub.exe || continue
-            SZ=$(stat -c%s hub.exe)
-            MAGIC=$(head -c 2 hub.exe)
-            echo "SIZE $SZ MAGIC $MAGIC"
-            if [ "$SZ" -gt 100000000 ] && [ "$SZ" -lt 400000000 ] && [ "$MAGIC" = "MZ" ]; then
-              cp hub.exe UnityHubSetup_intl.exe; echo "OK picked $u"; break
-            fi
+          BASE=https://public-cdn.cloud.unity3d.com/hub/prod
+          echo "=== UnityHubSetup.exe body ==="
+          curl -sSL -A "$UA" "$BASE/UnityHubSetup.exe" | head -c 400; echo
+          for f in latest.yml latest-win.yml latest-windows.yml; do
+            echo "=== $f ==="
+            curl -sSL -A "$UA" "$BASE/$f" -o "$f.txt" -w "http=%{http_code} size=%{size_download}\n"
+            head -c 300 "$f.txt"; echo
           done
-          ls -la UnityHubSetup_intl.exe
+          NAMES=$(cat latest.yml.txt latest-win.yml.txt latest-windows.yml.txt 2>/dev/null | grep -oE 'UnityHubSetup-[0-9.]+\.exe' | sort -u | head -5)
+          echo "NAMES=[$NAMES]"
+          for n in $NAMES UnityHubSetup-3.13.0.exe UnityHubSetup-3.12.1.exe UnityHubSetup-3.11.1.exe; do
+            echo "TRY $BASE/$n"
+            curl -sSL -A "$UA" "$BASE/$n" -o hub.exe -w "size=%{size_download} http=%{http_code}\n" || continue
+            SZ=$(stat -c%s hub.exe); M=$(head -c 2 hub.exe)
+            echo "SZ=$SZ MAGIC=$M"
+            if [ "$SZ" -gt 100000000 ] && [ "$M" = "MZ" ]; then cp hub.exe UnityHubSetup_intl.exe; echo "PICKED $n"; break; fi
+          done
+          ls -la UnityHubSetup_intl.exe || echo "NOTHING DOWNLOADED"
       - name: Upload Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
